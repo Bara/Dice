@@ -149,7 +149,7 @@ public void OnMapStart()
 		g_hAmmo = null;
 	}
 	
-	g_hAmmo = CreateTimer(1.0, ResetAmmo, _, TIMER_REPEAT);
+	g_hAmmo = CreateTimer(1.0, Timer_ResetAmmo, _, TIMER_REPEAT);
 }
 
 public void OnClientDisconnect(int client)
@@ -190,11 +190,14 @@ public Action Command_Dice(int client, int args)
 					{
 						
 						EmitSoundToClientAny(client, DICE_SOUND);
+						
 						Handle hPanel = CreatePanel();
 						SetPanelTitle(hPanel, "Bitte warten...");
 						DrawPanelText(hPanel, "(Glücksspiel kann süchtig machen!)");
 						SendPanelToClient(hPanel, client, PanelHandler, 10);
+						
 						CloseHandle(hPanel);
+						
 						g_bBusy[client] = true;
 						g_hDiceTimer[client] = CreateTimer(2.0, tWuerfel, client);
 					}
@@ -242,24 +245,6 @@ public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadca
 	}
 	
 	CreateTimer(1.0, Timer_CheckKnife, GetClientUserId(client));
-}
-
-public Action Timer_CheckKnife(Handle timer, any userid)
-{
-	int client = GetClientOfUserId(userid);
-	
-	if(IsClientValid(client))
-	{
-		if(GetClientTeam(client) == CS_TEAM_T && !g_bNoWeaponUse[client])
-		{
-			int iWeapon = GetPlayerWeaponSlot(client, CS_SLOT_KNIFE);
-			if (iWeapon == INVALID_ENT_REFERENCE)
-			{
-				int weapon = GivePlayerItem(client, "weapon_knife");
-				EquipPlayerWeapon(client, weapon);
-			}
-		}
-	}
 }
 
 public Action Event_PlayerDeathPre(Event event, char[] name, bool dontBroadcast)
@@ -325,51 +310,6 @@ public Action Event_PlayerDisconnect(Event event, const char[] name, bool dontBr
 	}
 }
 
-public Action TimerBeacon(Handle timer, any nClient)
-{
-	if(IsClientConnected(nClient) && IsClientInGame(nClient) && IsPlayerAlive(nClient))
-	{
-		// beacon effect...
-		float pfEyePosition[3];
-		GetClientEyePosition(nClient, pfEyePosition);
-
-#if defined(SOUND_BEACON)
-		EmitAmbientSound(SOUND_BEACON, pfEyePosition, SOUND_FROM_WORLD, SNDLEVEL_ROCKET);
-#endif
-
-		float pfAbsOrigin[3];
-		GetClientAbsOrigin(nClient, pfAbsOrigin);
-		pfAbsOrigin[2] += 5.0;
-
-		TE_Start("BeamRingPoint");
-		TE_WriteVector("m_vecCenter", pfAbsOrigin);
-		TE_WriteFloat("m_flStartRadius", 20.0);
-		TE_WriteFloat("m_flEndRadius", 400.0);
-		TE_WriteNum("m_nModelIndex", g_iBeamSprite);
-		TE_WriteNum("m_nHaloIndex", g_iHaloSprite);
-		TE_WriteNum("m_nStartFrame", 0);
-		TE_WriteNum("m_nFrameRate", 0);
-		TE_WriteFloat("m_fLife", 1.0);
-		TE_WriteFloat("m_fWidth", 3.0);
-		TE_WriteFloat("m_fEndWidth", 3.0);
-		TE_WriteFloat("m_fAmplitude", 0.0);
-		TE_WriteNum("r", 128);
-		TE_WriteNum("g", 255);
-		TE_WriteNum("b", 128);
-		TE_WriteNum("a", 192);
-		TE_WriteNum("m_nSpeed", 100);
-		TE_WriteNum("m_nFlags", 0);
-		TE_WriteNum("m_nFadeLength", 0);
-		TE_SendToAll();
-	}
-	else
-	{
-		KillTimer(timer);
-		return Plugin_Stop;
-	}
-	return Plugin_Continue;
-}
-
 public int PanelHandlerSpawn(Menu hPanel, MenuAction action, int param1, int param2)
 {
 	if (action == MenuAction_Select)
@@ -397,57 +337,6 @@ public int PanelHandler(Menu hPanel, MenuAction action, int param1, int param2)
 		CloseHandle(hPanel);
 	}
 	return 0;
-}
-
-public Action SlapTimerPlayer(Handle timer, int client)
-{
-	if (IsClientValid(client))
-	{
-		if (g_hSlapTimer[client] != null)
-		{
-			if(IsPlayerAlive(client) && GetClientTeam(client) == CS_TEAM_T)
-			{
-				SlapPlayer(client, 0, true);
-				return Plugin_Continue;
-			}
-		}
-	}
-	g_hSlapTimer[client] = null;
-	return Plugin_Stop;
-}
-
-public Action TimerBitchSlap(Handle timer, int client)
-{
-	if (IsClientValid(client))
-	{
-		if (g_hBitchSlap[client] != null)
-		{
-			if(IsPlayerAlive(client) && GetClientTeam(client) == CS_TEAM_T)
-			{
-				SlapPlayer(client, 0, true);
-				return Plugin_Continue;
-			}
-		}
-	}
-	g_hBitchSlap[client] = null;
-	return Plugin_Stop;
-}
-
-public Action DMGSlapTimerPlayer(Handle timer, int client)
-{
-	if (IsClientValid(client))
-	{
-		if (g_hSlapDMG[client] != null)
-		{
-			if(IsPlayerAlive(client) && GetClientTeam(client) == CS_TEAM_T)
-			{
-				SlapPlayer(client, 5, true);
-				return Plugin_Continue;
-			}
-		}
-	}
-	g_hSlapDMG[client] = null;
-	return Plugin_Stop;
 }
 
 public Action tWuerfel(Handle timer, int client)
@@ -1456,30 +1345,6 @@ public Action tWuerfel(Handle timer, int client)
 	return Plugin_Stop;
 }
 
-public Action Timer_ChangePlayerColor(Handle timer, int client)
-{
-	if (IsClientValid(client))
-	{
-		if (g_hDiscoColor[client] != null)
-		{
-			int Red = GetRandomInt(0, 255);
-			int Green = GetRandomInt(0, 255);
-			int Blue = GetRandomInt(0, 255);
-			SetEntityRenderMode(client, RENDER_NORMAL);
-			SetEntityRenderColor(client, Red, Green, Blue, 255);
-			
-			return Plugin_Continue;
-		}
-	}
-	
-	return Plugin_Stop;
-}
-
-public Action RespawnPlayer(Handle timer, int client)
-{
-	CS_RespawnPlayer(client);
-}
-
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon)
 {
 	if (IsClientValid(client))
@@ -1586,17 +1451,6 @@ public Action Timer_DisableGodMode(Handle timer, int client)
 	{
 		g_bGodmode[client] = false;
 		SetEntityRenderColor(client, 255, 255, 255, 255);
-	}
-}
-
-public Action ResetAmmo(Handle timer)
-{
-	LoopClients(i)
-	{
-		if (IsPlayerAlive(i) && g_bAmmoInfi[i])
-		{
-			Client_ResetAmmo(i);
-		}
 	}
 }
 
